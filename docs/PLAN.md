@@ -64,6 +64,25 @@ Run `bash scripts/m0-check.sh` on the Mac. It:
       which BedrockOnLinux found makes Minecraft's threads slow. macOS needs an `msync`-style fast path.
 - **Exit:** a WineGDK build that passes `test-winegdk.sh` on Apple Silicon. ✅ **Done.**
 
+### Graphics route findings (2026-10-16)
+`scripts/test-d3d12-backends.sh` (workflow *Graphics backends*) on GitHub's M1 VM with our WineGDK build:
+
+| Setup | Result | Blocker |
+|---|---|---|
+| Wine dxgi/d3d11 + Wine vkd3d (d3d12) | ✅ renders | (feature level 11_0, binding tier 1 on the VM GPU) |
+| Wine dxgi + **vkd3d-proton 3.0.1** | ❌ | needs transform feedback (Metal has none) |
+| **DXVK 3.1.1** + vkd3d-proton (BedrockOnLinux's stack) | ❌ | needs geometry shaders (Metal has none) |
+
+So the Linux graphics stack does not work on MoltenVK. Routes for Minecraft's D3D12:
+1. **Wine's vkd3d** (works today). Unknown: whether Bedrock accepts its feature set. Found out in M3.
+2. **D3DMetal** (Apple GPTK; what CrossOver uses). Needs a real Mac to test, and its Wine-side glue
+   must match our Wine version.
+3. **KosmicKrisp** (LunarG's conformant Vulkan 1.4 driver on Metal). Geometry/tessellation support is in
+   progress; once it lands, DXVK/vkd3d-proton may work. Re-run the backend test then.
+
+Side finding: `winebus.so` crashes (`NSException`) while loading SDL2 at startup, so the controller
+service fails. Fix before M4 (e.g. disable winebus's SDL backend and use its IOHID one).
+
 ### M2: Get the game files
 - [ ] Build the `xodus` Store downloader for macOS (BedrockOnLinux uses it to fetch the game under your account).
 - [ ] Port the launcher's sign-in and download code, starting from BedrockOnLinux's `bol/auth.py` and `bol/games.py`.
