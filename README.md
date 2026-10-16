@@ -53,6 +53,11 @@ cd MCBedrockForMac
 ./mcb play       # starts the game
 ```
 
+`setup` also fetches a few third-party runtime pieces from their original public sources, each checked against a
+pinned SHA-256 (see `third_party/components.json`), and `play` applies BedrockOnLinux's game fixes before every launch
+(`./mcb prepare` runs them on their own). Apple's free Command Line Tools are needed (for `git` and Python):
+`xcode-select --install`.
+
 Everything lives in `~/Library/Application Support/MCBedrockForMac` (`./mcb paths`). Sign-in tokens are kept
 in the macOS Keychain by xodus. `./mcb install preview` / `./mcb play preview` use Minecraft Preview.
 

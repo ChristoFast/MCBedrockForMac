@@ -6,6 +6,7 @@
 #   ./mcb login              sign in to the Microsoft account that owns Minecraft
 #   ./mcb install [preview]  download / update the game from the Microsoft Store
 #   ./mcb play [preview]     start the game
+#   ./mcb prepare [preview]  re-apply the game fixes (play does this automatically)
 #   ./mcb doctor             check that everything is in place
 #   ./mcb selftest           run the engine's self-test (Windows programs, GDK DLLs, D3D12)
 #   ./mcb logout | paths | wine <args...>
@@ -19,6 +20,7 @@ MCB_HOME="${MCB_HOME:-$HOME/Library/Application Support/MCBedrockForMac}"
 ENGINE="$MCB_HOME/engine/winegdk"
 XODUS="$MCB_HOME/bin/xodus-cli"
 GAMES="$MCB_HOME/games"
+COMPONENTS="$MCB_HOME/components"
 LOGS="$MCB_HOME/logs"
 export WINEPREFIX="${WINEPREFIX:-$MCB_HOME/prefix}"
 
@@ -44,6 +46,12 @@ warn() { printf '  [warn] %s\n' "$*"; }
 
 need_engine() { [ -x "$ENGINE/bin/wine" ] || die "engine not installed; run: ./mcb setup"; }
 need_xodus()  { [ -x "$XODUS" ] || die "xodus not installed; run: ./mcb setup"; }
+need_python() {
+    # /usr/bin/python3 is a stub until Apple's free Command Line Tools are installed
+    # (git needs them too).
+    python3 -c 'import sys; sys.exit(sys.version_info < (3, 9))' 2>/dev/null \
+        || die "needs Python 3.9+ from Apple's Command Line Tools: run  xcode-select --install"
+}
 
 engine_env() {
     need_engine
@@ -103,6 +111,10 @@ cmd_setup() {
     ok "engine: $("$ENGINE/bin/wine" --version 2>/dev/null)"
     ok "xodus:  $("$XODUS" --version 2>/dev/null)"
 
+    step "Fetching runtime components (pinned, from their original sources)"
+    need_python
+    python3 "$REPO/scripts/mcbgame.py" fetch "$COMPONENTS" || die "could not fetch the runtime components"
+
     step "Creating the Wine prefix (first run takes a minute)"
     engine_env
     wine wineboot -i >"$LOGS/wineboot.log" 2>&1 || warn "wineboot reported an error (see $LOGS/wineboot.log)"
@@ -128,19 +140,44 @@ cmd_install() {
     ok "installed to $GAMES/$ed"
 }
 
+# Applies the game fixes (Xbox-Live DLLs, OpenSSL XCurl, GameInput, registry).
+prepare_game() {
+    local ed="$1" reg="$MCB_HOME/prepare.reg"
+    need_python
+    engine_env
+    step "Preparing Minecraft ($ed)"
+    python3 "$REPO/scripts/mcbgame.py" prepare "$GAMES/$ed" "$WINEPREFIX" "$ENGINE" "$COMPONENTS" "$reg" \
+        || die "could not prepare the game"
+    wine regedit /S "$reg" >"$LOGS/regedit.log" 2>&1 || die "registry update failed (see $LOGS/regedit.log)"
+    wineserver -w 2>/dev/null
+    ok "registry updated"
+}
+
+cmd_prepare() {
+    local ed="${1:-release}"
+    product_id "$ed" >/dev/null
+    [ -d "$GAMES/$ed" ] || die "Minecraft ($ed) is not installed; run: ./mcb install $ed"
+    mkdir -p "$LOGS"
+    prepare_game "$ed"
+}
+
 cmd_play() {
     need_xodus
     local ed="${1:-release}"
     product_id "$ed" >/dev/null
     [ -e "$GAMES/$ed/Minecraft.Windows.exe" ] || die "Minecraft ($ed) is not installed; run: ./mcb install $ed"
-    engine_env
-    [ -e "$WINEPREFIX/drive_c/windows/system32/xgameruntime.dll.threading" ] \
-        || warn "xgameruntime.dll.threading is missing; the game may refuse to start (milestone 3 work)"
     mkdir -p "$LOGS"
+    prepare_game "$ed"
     local log
     log="$LOGS/play-$(date +%Y%m%d-%H%M%S).log"
     export WINEDEBUG="${WINEDEBUG:-err+all,fixme-all}"
-    say "Starting Minecraft ($ed). Log: $log"
+    # From BedrockOnLinux's launch: native cryptbase stub first; VR/AGS paths off.
+    export WINEDLLOVERRIDES="cryptbase=n,b;vrclient=;vrclient_x64=;openvr_api=;wineopenxr=;amd_ags_x64=;mscoree,mshtml="
+    export MICROSOFT_WINDOWSAPPRUNTIME_BOOTSTRAP_INITIALIZE_SHOWUI=0
+    export MICROSOFT_WINDOWSAPPRUNTIME_BOOTSTRAP_INITIALIZE_FAILFAST=0
+    export MICROSOFT_WINDOWSAPPRUNTIME_DEPLOYMENT_INITIALIZE_ONERRORSHOWUI=0
+    step "Starting Minecraft ($ed)"
+    say "Log: $log"
     # xodus fetches the game license, decrypts the protected segments into a RAM
     # disk, and starts Wine with WINE_DLL_FILE_MAP pointing at them.
     "$XODUS" run "$GAMES/$ed" "$ENGINE/bin/wine" 2>&1 | tee "$log"
@@ -160,8 +197,11 @@ cmd_doctor() {
     if [ -x "$ENGINE/bin/wine" ]; then ok "engine $("$ENGINE/bin/wine" --version 2>/dev/null)"; else bad "engine missing (./mcb setup)"; fi
     if [ -x "$XODUS" ]; then ok "xodus $("$XODUS" --version 2>/dev/null)"; else bad "xodus missing (./mcb setup)"; fi
     if [ -f "$WINEPREFIX/system.reg" ]; then ok "Wine prefix"; else bad "Wine prefix missing (./mcb setup)"; fi
-    if [ -e "$WINEPREFIX/drive_c/windows/system32/xgameruntime.dll.threading" ]; then ok "xgameruntime.dll.threading"
-    else warn "xgameruntime.dll.threading missing (needed to start the game; milestone 3)"; fi
+    local c
+    for c in xgameruntime.dll.threading cacert.pem gdkdeps-libHttpClient.GDK.dll gdkdeps-XCurl.dll \
+             openssl-xcurl-set/libcurl-4.dll openssl-xcurl-set/xcurl-cashim.dll openssl-xcurl-set/cryptbase.dll; do
+        if [ -e "$COMPONENTS/$c" ]; then ok "component $c"; else bad "component $c missing (./mcb setup)"; fi
+    done
     local ed
     for ed in release preview; do
         if [ -e "$GAMES/$ed/Minecraft.Windows.exe" ]; then ok "Minecraft ($ed) installed"
@@ -185,16 +225,17 @@ cmd_paths() {
     say "xodus:  $XODUS"
     say "prefix: $WINEPREFIX"
     say "games:  $GAMES"
+    say "parts:  $COMPONENTS"
     say "logs:   $LOGS"
 }
 
 cmd_wine() { engine_env; wine "$@"; }
 
-usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; }
 
 cmd="${1:-help}"; [ $# -gt 0 ] && shift
 case "$cmd" in
-    setup|login|logout|install|play|doctor|selftest|paths|wine) "cmd_$cmd" "$@" ;;
+    setup|login|logout|install|prepare|play|doctor|selftest|paths|wine) "cmd_$cmd" "$@" ;;
     help|-h|--help) usage ;;
     *) usage; exit 1 ;;
 esac

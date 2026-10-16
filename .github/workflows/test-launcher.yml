@@ -10,6 +10,8 @@ on:
   push:
     paths:
       - mcb
+      - scripts/mcbgame.py
+      - third_party/components.json
       - scripts/winegdk-env.sh
       - .github/workflows/test-launcher.yml
 
@@ -24,6 +26,21 @@ jobs:
       - run: ./mcb setup < /dev/null
       - run: ./mcb doctor
       - run: ./mcb selftest
+      - name: Prepare a placeholder game folder (no game files in CI)
+        run: |
+          set -euo pipefail
+          games="$HOME/Library/Application Support/MCBedrockForMac/games/release"
+          mkdir -p "$games"
+          echo placeholder > "$games/XCurl.dll"
+          ./mcb prepare | tee prepare.log
+          grep -q "forced onto the XCurl provider" prepare.log
+          for f in XCurl.dll.mcb-orig xcurl_real.dll libHttpClient.GDK.dll cacert.pem etc/ssl/certs/ca-bundle.crt; do
+            test -e "$games/$f" || { echo "missing $f"; exit 1; }
+          done
+          ./mcb wine reg query 'HKLM\Software\Microsoft\Windows NT\CurrentVersion\OEM' /v ConsoleMode | tee reg.txt
+          grep -q 0x8 reg.txt
+          rm -rf "$games"
+
       - name: Refuses to play without the game
         run: |
           if ./mcb play 2>err.txt; then echo "play should have failed"; exit 1; fi

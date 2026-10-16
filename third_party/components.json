@@ -1,0 +1,27 @@
+{
+  "_comment": "Third-party runtime pieces `mcb setup` fetches from their original public sources, each checked against a pinned SHA-256. Pins and sources follow BedrockOnLinux (bol/config.py, bol/vkd3d.py). None of these are redistributed by this repo.",
+  "xgameruntime_threading": {
+    "what": "Microsoft's native XGameRuntime, loaded by WineGDK's xgameruntime.dll as xgameruntime.dll.threading",
+    "url": "https://github.com/Weather-OS/GDK-Proton/releases/download/release10-32/GDK-Proton10-32.tar.gz",
+    "member_suffix": "files/lib/wine/x86_64-windows/xgameruntime.dll.threading",
+    "sha256": "4c3e3faf5bcd86779e4a69677902dd8b36a16e1136a5901e616c36d8a02b68f6"
+  },
+  "openssl_xcurl_set": {
+    "what": "OpenSSL libcurl + DLL closure + CA-injecting XCurl shim + cryptbase RNG stub (BedrockOnLinux's reproducible build)",
+    "repo": "Wyze3306/BedrockOnLinux",
+    "asset": "openssl-xcurl-set-504bb166e4e7.tar.gz",
+    "sha256": "504bb166e4e737ad81c3ac8e7a917740b28478f69acd89e538c3bf921c29523f"
+  },
+  "gdk_deps": {
+    "what": "Open-source builds of libHttpClient.GDK.dll and XCurl.dll (minecraft-linux/mcpelauncher-gdk-dependencies)",
+    "base_url": "https://github.com/minecraft-linux/mcpelauncher-gdk-dependencies/releases/download/v0.0.0",
+    "files": {
+      "libHttpClient.GDK.dll": "718f0c6842c8e35d7cac5c18ec025404c83be03ec035f0d3904e70d6508b9e24",
+      "XCurl.dll": "28443194e9860733f24294219bcb45226677636f9721d4bf145094d977f7161f"
+    }
+  },
+  "cacert": {
+    "what": "Mozilla CA bundle (curl.se), refreshed on each setup",
+    "url": "https://curl.se/ca/cacert.pem"
+  }
+}

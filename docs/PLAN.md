@@ -99,14 +99,19 @@ service fails. Fix before M4 (e.g. disable winebus's SDL backend and use its IOH
 ### M3: First launch (the big one)
 Known requirements, from BedrockOnLinux / GDK-Proton:
 - [x] WineGDK `WINE_DLL_FILE_MAP` loader (BedrockOnLinux patches 0007/0008, now carried) so `xodus-cli run` works.
-- [ ] `xgameruntime.dll.threading`: Microsoft's native XGameRuntime, loaded by WineGDK's `xgameruntime.dll`.
-      Not redistributable by us; fetch at setup from GDK-Proton's public `release10-32` archive (BedrockOnLinux
-      pins its SHA-256 `4c3e3faf…`) into the prefix's `system32`.
-- [ ] XCurl replacement: the game's own `XCurl.dll` doesn't work under Wine. Replace it with MinGW libcurl + its
-      DLLs + a CA bundle (BedrockOnLinux's "OpenSSL-XCurl set", built from pinned msys2 packages + `xcurl-cashim`).
-      Pure Windows DLLs, so it can be built on Linux CI.
-- [ ] BedrockOnLinux's game fixups worth porting (`bol/fixups.py`): PE stack-reserve enlargement, Classic
-      renderer (`graphics_mode:0`) on first run, `GameInputRedist` stub handling.
+- [x] Runtime components, fetched by `mcb setup` from their original sources with pinned SHA-256
+      (`third_party/components.json`, `scripts/mcbgame.py fetch`): `xgameruntime.dll.threading` (Microsoft's native
+      XGameRuntime, streamed out of GDK-Proton's `release10-32` archive), BedrockOnLinux's OpenSSL XCurl set,
+      minecraft-linux's open-source `libHttpClient.GDK.dll` + `XCurl.dll`, and the curl.se CA bundle.
+- [x] `mcb prepare` (run by `play`; `scripts/mcbgame.py prepare`, ported from BedrockOnLinux):
+      Xbox-Live DLLs + OpenSSL XCurl shim into the game folder, libHttpClient forced onto XCurl (6-byte NOP),
+      CA bundles, cryptbase RNG stub into `system32`, `xgameruntime.dll.threading` into the engine,
+      Microsoft GameInput extracted from the game's own `GameInputRedist.msi` (no msiexec), WinGDK registry prereqs
+      (ConsoleMode 8, TLS 1.2, WinRT pickers), and the Classic renderer in an existing `options.txt`.
+      Launch overrides: `cryptbase=n,b`, VR/AGS off.
+- [ ] Not ported yet: BedrockOnLinux's Ore UI sign-in gate patches, options.txt crash recovery, frame-rate limiter,
+      and the in-game Xbox sign-in (MSA refresh token in the registry + XBL pre-auth). The game should start
+      offline without them.
 - [ ] D3D12 via Wine vkd3d (see *Graphics route findings*); if Bedrock rejects it, try D3DMetal on a real Mac.
 - **Exit:** the Minecraft title screen renders on your Mac.
 
