@@ -1,11 +1,16 @@
 # Runs the milestone 0 foundation check on a GitHub-hosted Apple Silicon Mac.
 # Note: these runners are VMs with a paravirtual GPU, so the D3D12 result here
-# can differ from a real Mac. Mac minutes count 10x on private repos, so this
-# only runs when started by hand (Actions tab -> "M0 check" -> Run workflow).
+# can differ from a real Mac. Runs on changes to the check or the probe, or by
+# hand (Actions tab -> "M0 check (macOS)" -> Run workflow).
 name: M0 check (macOS)
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - scripts/m0-check.sh
+      - tools/**
+      - .github/workflows/m0-check.yml
 
 jobs:
   m0:

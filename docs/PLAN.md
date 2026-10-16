@@ -44,8 +44,9 @@ Run `bash scripts/m0-check.sh` on the Mac. It:
 - **Exit:** at least one D3D12 path renders on your M5. That decides the graphics route for M3.
 
 ### M1: Build WineGDK for macOS
-- [ ] A build script that builds WineGDK as x86-64 (for Rosetta) **on your Mac**. The repo is private, so GitHub's
-      macOS runners would burn the free minutes fast.
+- [ ] A GitHub Actions workflow on a **macOS arm64 runner** that builds WineGDK as x86-64 (for Rosetta).
+      The repo is public, so these runs are free.
+- [ ] Publish the build as a downloadable artifact.
 - [ ] Fix the Linux-only parts (WineGDK uses Linux `ntsync`; macOS needs Wine's fallback sync or `msync`).
 - **Exit:** a WineGDK build that starts `winecfg` on your Mac.
 
@@ -85,5 +86,6 @@ Run `bash scripts/m0-check.sh` on the Mac. It:
 
 - Code is written in this repo.
 - Windows-side pieces (test programs, stub DLLs) are cross-compiled on Linux and committed under `tools/bin/`.
-- Mac-side pieces (WineGDK) are built and tested on your Mac, by scripts in `scripts/`.
-- Each script writes a report; you paste it back, and that drives the next change.
+- Mac-side pieces are built and tested on GitHub's Apple Silicon runners (free for public repos). Those are VMs with a
+  limited virtual GPU, so graphics results must still be confirmed on a real Mac.
+- Each check writes a report, uploaded as a workflow artifact, which drives the next change.
