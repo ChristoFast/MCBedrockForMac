@@ -1,9 +1,15 @@
 # MCBedrockForMac
 
-Play **Minecraft: Bedrock Edition** on an Apple Silicon MacBook (built for an M5 MacBook Pro).
+Play **Minecraft: Bedrock Edition** on an Apple Silicon MacBook (built for an M5 MacBook Pro), **for $0**.
 
 Mojang doesn't make Bedrock for macOS. This repo uses the most reliable workaround: run the
-**Windows version you already own** inside a Windows 11 ARM virtual machine (VM).
+**Windows version you already own** inside a free Windows 11 ARM virtual machine (VM).
+
+| Piece | Free option |
+|---|---|
+| Minecraft Bedrock | Already included with Java Edition ("Java & Bedrock Edition for PC") |
+| VM app | **VMware Fusion Pro**, free for personal use |
+| Windows | **Windows 11 Insider Preview for ARM**, free with a Microsoft account |
 
 > **Status:** not yet tested on an M5. Fill in the [test log](#test-log) as you go.
 
@@ -15,21 +21,33 @@ Mojang doesn't make Bedrock for macOS. This repo uses the most reliable workarou
       "Minecraft: Java & Bedrock Edition for PC" means you're set.
 - [ ] **Know which Microsoft account owns it.** You'll sign into Windows/Xbox with that same account.
 - [ ] **Free disk space:** about 64 GB for the VM.
-- [ ] **A Windows 11 license** to activate Windows (Pro is the edition Microsoft supports in a VM on Apple Silicon).
 
-## 1. Pick a VM app
+## 1. Install VMware Fusion Pro (free)
 
-| App | Cost | 3D for games | Notes |
-|---|---|---|---|
-| **VMware Fusion Pro** | Free for personal use | Good | Download from the Broadcom support portal (needs a free account). **Start here.** |
-| **Parallels Desktop** | Paid subscription | Best | Microsoft-authorized for Windows 11 ARM. "Coherence" mode can make Minecraft look like a normal Mac app. Has a free trial, so try it if Fusion struggles. |
-| UTM | Free | Weak | Not good enough for games. Skip it. |
+1. Create a free account on the **Broadcom support portal** (<https://support.broadcom.com>).
+2. Download **VMware Fusion Pro** and install it. When asked for a license, choose
+   **"Use Fusion Pro for Personal Use"**.
 
-## 2. Get Windows 11 for ARM
+> Skip Parallels (paid) and UTM (free, but its 3D support is too weak for games).
 
-- **Parallels:** the setup wizard downloads Windows 11 for you automatically.
-- **VMware Fusion:** download the **Windows 11 ARM64 ISO** from Microsoft
-  (<https://www.microsoft.com/software-download/windows11arm64>), then create a new VM from that ISO.
+## 2. Get Windows 11 for ARM (free)
+
+**Option A: Windows Insider Preview (recommended, free and legitimate)**
+
+1. Join the Windows Insider Program at <https://www.microsoft.com/windowsinsider> with your Microsoft account.
+2. Download the **Windows 11 Insider Preview ARM64** ISO (Insider downloads page). Pick the **Beta** or
+   **Release Preview** channel for stability.
+3. Insider builds expire after a while. Keep Windows Update on and they renew themselves.
+
+**Option B: Regular Windows 11 ARM64 ISO without a product key**
+
+Download it from <https://www.microsoft.com/software-download/windows11arm64> and pick
+**"I don't have a product key"** during setup. It installs and runs, but shows an
+"Activate Windows" watermark and locks personalization settings. Microsoft's license terms still expect
+a license, so Option A is the cleaner free route.
+
+Then in Fusion: **File → New → Install from disc or image**, choose the ISO, and enable
+**TPM / encryption** when Fusion asks (Windows 11 requires it).
 
 ## 3. Recommended VM settings (M5 MacBook Pro)
 
@@ -38,15 +56,13 @@ Mojang doesn't make Bedrock for macOS. This repo uses the most reliable workarou
 | CPU cores | 4–6 | Leaves cores free for macOS |
 | Memory | 8 GB (12 GB if you have 24 GB or more) | Bedrock + Windows are comfortable at 8 GB |
 | Disk | 64 GB or more | Windows updates are large |
-| 3D acceleration | **On** | Required, or Minecraft won't start or will run very slowly |
-| Graphics memory (Fusion) | Max available | Better chunk rendering |
-| Display | Retina/high-res **off** at first | Big FPS win. Turn it on later if FPS allows |
-| Power (Parallels) | "Gaming" profile | Prioritizes the VM |
+| Display → Accelerate 3D Graphics | **On** | Required, or Minecraft won't start or will run very slowly |
+| Shared graphics memory | Max available | Better chunk rendering |
+| Display → "Use full resolution for Retina display" | **Off** at first | Big FPS win. Turn it on later if FPS allows |
 
 After Windows installs:
 
-- **Fusion:** install **VMware Tools** (VM menu → Install VMware Tools). This provides the graphics driver.
-- **Parallels:** Parallels Tools installs automatically.
+- Install **VMware Tools** (VM menu → Install VMware Tools). This provides the graphics driver.
 - Run **Windows Update** until nothing is left. Graphics fixes arrive this way.
 
 ## 4. Install Minecraft Bedrock
@@ -58,33 +74,39 @@ After Windows installs:
 
 ## 5. Make it feel like a Mac app (optional)
 
-- **Parallels:** turn on Coherence mode, then right-click Minecraft in the Dock → *Options → Keep in Dock*.
-  You now launch it like any Mac app.
-- **Fusion:** use full-screen mode on its own macOS Space. Swipe with three fingers to switch.
-- A future goal for this repo: a one-click macOS launcher script that boots the VM and starts Minecraft.
+- Put the VM in full screen (⌘ + Ctrl + F) on its own macOS Space, and swipe with three fingers to switch.
+- A future goal for this repo: a free one-click macOS launcher script that boots the VM (via Fusion's
+  built-in `vmrun` tool) and starts Minecraft.
 
 ## Performance tips
 
 - Plug in. macOS throttles the VM on battery.
 - In Minecraft: lower **Render Distance** (8–12 chunks), turn **Fancy Graphics** off, and leave Vibrant Visuals / RTX off.
 - Close heavy Mac apps (browsers with lots of tabs) while playing.
-- Mouse feels floaty? In the VM settings, set the mouse to **"Optimize for games"** (Parallels) or turn on game-style mouse capture (Fusion).
+- Mouse feels floaty or escapes the window? Use full screen, and in Fusion settings → Keyboard & Mouse,
+  turn on game-style mouse capture.
 
 ## Troubleshooting
 
 | Problem | Try |
 |---|---|
+| Fusion won't create the Windows 11 VM | Turn on TPM / encryption in the new-VM wizard |
 | Minecraft won't install or says "not available for this device" | Use the **Xbox app** instead of the Store page; make sure Windows is fully updated |
-| Crashes on launch or black screen | Confirm 3D acceleration is on and VMware/Parallels Tools are installed; update Windows |
+| Crashes on launch or black screen | Confirm 3D acceleration is on and VMware Tools is installed; update Windows |
 | Very low FPS | Lower the VM's display resolution, turn Retina off, lower render distance |
 | Can't sign in to Xbox | Check the Windows clock and time zone; sign out and back in on the Xbox app |
-| Mouse escapes the window | Use full screen, and turn on game-mode mouse capture in VM settings |
+| Insider build says it's expiring | Run Windows Update to move to the newest Insider build |
 | Can't find friends' worlds or LAN games | Set the VM network to **Bridged** instead of NAT |
 
-If Bedrock simply refuses to run in the VM, open an issue in this repo with your Windows build,
-VM app and version, and the error. The fallbacks are the iOS app via PlayCover
-([mcbe-macos](https://github.com/Erkam246/mcbe-macos)), which needs a separate iOS purchase,
-or playing Java Edition natively with friends on a [Geyser](https://geysermc.org/) server.
+## Free fallback if Bedrock won't run in the VM
+
+If you mainly want Bedrock to **play with friends on consoles or phones**, you can stay on
+**Java Edition, which runs natively on your Mac**, and host a free Java server with
+[Geyser](https://geysermc.org/). Geyser lets Bedrock players join a Java server, so your friends join
+from Bedrock while you play Java. It runs on your Mac at no cost.
+
+(The iOS and Android versions of Bedrock can also run on Macs via PlayCover or mcpelauncher, but they require
+buying the game again on those stores, so they're out of scope for this repo.)
 
 ---
 
@@ -92,6 +114,6 @@ or playing Java Edition natively with friends on a [Geyser](https://geysermc.org
 
 Fill this in as you try things, so this guide reflects what actually works on an M5.
 
-| Date | macOS | VM app + version | Windows build | Minecraft version | Result / FPS / notes |
+| Date | macOS | Fusion version | Windows build | Minecraft version | Result / FPS / notes |
 |---|---|---|---|---|---|
 | | | | | | |
