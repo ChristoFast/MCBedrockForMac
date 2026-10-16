@@ -51,11 +51,18 @@ Run `bash scripts/m0-check.sh` on the Mac. It:
       `third_party/winegdk.env`) as x86-64 on GitHub's Intel Mac runner, with ccache for fast rebuilds.
 - [x] First build (2026-10-16): **the whole of WineGDK compiles on macOS with no source changes**, including
       `xgameruntime.dll` and `gameinput.dll`. (~65 min cold.)
-- [ ] Bundle the Homebrew libraries (`scripts/bundle-macos-libs.sh`) and publish the build as an artifact.
-- [ ] Test on an Apple Silicon runner under Rosetta (`scripts/test-winegdk.sh`): Windows programs, GDK DLLs, D3D12.
+- [x] Bundle the Homebrew libraries (`scripts/bundle-macos-libs.sh`) and publish the build as an artifact
+      (`winegdk-macos-x86_64`, ~79 MB). Rebuilds take ~15 min thanks to ccache.
+- [x] Patch: `patches/winegdk/0001` enables Vulkan portability enumeration, without which the Vulkan loader
+      hides MoltenVK and DXGI/D3D12 fail (`VK_ERROR_INCOMPATIBLE_DRIVER`).
+- [x] **Passed on Apple Silicon under Rosetta (2026-10-16, GitHub M1 VM):** Windows programs run,
+      `xgameruntime.dll` and `gameinput.dll` load, D3D12 renders (164 frames / 3 s).
+      Caveats from the VM GPU: D3D12 feature level 11_0, shader model 6.0, binding tier 1; D3D11 only 9_3.
+      These need re-checking on a real Mac; BedrockOnLinux uses vkd3d-proton (not Wine's vkd3d) for D3D12,
+      which we'll likely need too.
 - [ ] Later, for performance: Linux `ntsync` doesn't exist on macOS; Wine falls back to server-side sync,
       which BedrockOnLinux found makes Minecraft's threads slow. macOS needs an `msync`-style fast path.
-- **Exit:** a WineGDK build that passes `test-winegdk.sh` on Apple Silicon.
+- **Exit:** a WineGDK build that passes `test-winegdk.sh` on Apple Silicon. ✅ **Done.**
 
 ### M2: Get the game files
 - [ ] Build the `xodus` Store downloader for macOS (BedrockOnLinux uses it to fetch the game under your account).

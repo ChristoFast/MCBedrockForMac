@@ -3,7 +3,7 @@
 A free, open-source launcher that runs **Minecraft: Bedrock Edition for Windows** on Apple Silicon Macs
 (built for an M5 MacBook Pro), with no virtual machine and no paid software.
 
-> **Status:** milestone 1 (building WineGDK for macOS). Nothing is playable yet. See **[docs/PLAN.md](docs/PLAN.md)** for how it will work and the milestones.
+> **Status:** milestone 1 done (WineGDK runs on Apple Silicon and renders D3D12). Next: milestone 2 (getting the game files). Nothing is playable yet. See **[docs/PLAN.md](docs/PLAN.md)** for how it will work and the milestones.
 
 ## The idea
 
