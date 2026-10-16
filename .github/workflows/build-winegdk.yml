@@ -1,0 +1,45 @@
+# Milestone 1: build WineGDK for macOS (x86-64, runs under Rosetta 2).
+name: Build WineGDK (macOS)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/build-winegdk-macos.sh
+      - third_party/winegdk.env
+      - patches/winegdk/**
+      - .github/workflows/build-winegdk.yml
+
+jobs:
+  build:
+    # Intel runner: builds x86-64 Wine natively with x86-64 Homebrew.
+    runs-on: macos-15-intel
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build WineGDK
+        env:
+          MCB_WORK: ${{ runner.temp }}/mcb-work
+        run: bash scripts/build-winegdk-macos.sh
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: winegdk-logs
+          path: |
+            ${{ runner.temp }}/mcb-work/winegdk-configure.log
+            ${{ runner.temp }}/mcb-work/winegdk-make.log
+            ${{ runner.temp }}/mcb-work/winegdk-build/config.log
+          if-no-files-found: ignore
+
+      - name: Package
+        run: tar -C "${{ runner.temp }}/mcb-work/dist" -cJf "${{ runner.temp }}/winegdk-macos-x86_64.tar.xz" winegdk
+
+      - name: Upload WineGDK build
+        uses: actions/upload-artifact@v4
+        with:
+          name: winegdk-macos-x86_64
+          path: ${{ runner.temp }}/winegdk-macos-x86_64.tar.xz
+          compression-level: 0
