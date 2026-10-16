@@ -88,15 +88,26 @@ service fails. Fix before M4 (e.g. disable winebus's SDL backend and use its IOH
       pinned commit + BedrockOnLinux's 7 patches. First build passed (2026-10-16, ~5 min, arm64 Mach-O).
       xodus already supports macOS: Keychain token storage, WKWebView sign-in, and `run` decrypts the
       protected segments into an `hdiutil` RAM disk.
-- [ ] Launcher commands wrapping it: `login` (`xodus-cli login`), `install` (`xodus-cli streaming 9NBLGGH2JHXJ <dir>`).
-      Never run in CI: logs and artifacts are public, and game files must never be uploaded.
+- [x] Launcher `./mcb` (setup, login, install, play, doctor, selftest). `setup` installs from the public
+      **nightly release** (`release-nightly.yml` publishes the latest passing WineGDK + xodus builds with SHA256SUMS).
+      Workflow *Test launcher* runs setup/doctor/selftest on Apple Silicon: passed 2026-10-16.
+      `play` = `xodus-cli run <game> <wine>`: license fetch, decrypt protected segments to a RAM disk, start Wine
+      with `WINE_DLL_FILE_MAP`. Login/install/play never run in CI (public logs; no game files in artifacts).
 - [ ] First real sign-in + download on a real Mac (needs the owner's Microsoft account).
 - **Exit:** Minecraft for Windows is downloaded to your Mac with your account.
 
 ### M3: First launch (the big one)
-- [ ] Set up the Wine prefix: GDK runtime, GameInput stubs, XCurl networking, the stub DLLs from BedrockOnLinux's `src/`.
-- [ ] Wire D3D12 to D3DMetal (Option A). If that fails, try vkd3d-proton on KosmicKrisp (Option B).
-- [ ] Force the Classic renderer first; it's the most reliable under Wine.
+Known requirements, from BedrockOnLinux / GDK-Proton:
+- [x] WineGDK `WINE_DLL_FILE_MAP` loader (BedrockOnLinux patches 0007/0008, now carried) so `xodus-cli run` works.
+- [ ] `xgameruntime.dll.threading`: Microsoft's native XGameRuntime, loaded by WineGDK's `xgameruntime.dll`.
+      Not redistributable by us; fetch at setup from GDK-Proton's public `release10-32` archive (BedrockOnLinux
+      pins its SHA-256 `4c3e3faf…`) into the prefix's `system32`.
+- [ ] XCurl replacement: the game's own `XCurl.dll` doesn't work under Wine. Replace it with MinGW libcurl + its
+      DLLs + a CA bundle (BedrockOnLinux's "OpenSSL-XCurl set", built from pinned msys2 packages + `xcurl-cashim`).
+      Pure Windows DLLs, so it can be built on Linux CI.
+- [ ] BedrockOnLinux's game fixups worth porting (`bol/fixups.py`): PE stack-reserve enlargement, Classic
+      renderer (`graphics_mode:0`) on first run, `GameInputRedist` stub handling.
+- [ ] D3D12 via Wine vkd3d (see *Graphics route findings*); if Bedrock rejects it, try D3DMetal on a real Mac.
 - **Exit:** the Minecraft title screen renders on your Mac.
 
 ### M4: Playable
