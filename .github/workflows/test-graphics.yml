@@ -1,0 +1,45 @@
+# Compares D3D12 translation layers (Wine vkd3d, vkd3d-proton, DXVK) on Apple
+# Silicon, using the latest successful WineGDK build. No rebuild needed.
+name: Graphics backends (macOS)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/test-d3d12-backends.sh
+      - .github/workflows/test-graphics.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  backends:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download latest WineGDK build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow build-winegdk.yml \
+                     --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          echo "Using WineGDK build from run $run_id"
+          gh run download "$run_id" --repo "$GITHUB_REPOSITORY" -n winegdk-macos-x86_64 -D "$RUNNER_TEMP"
+          tar -C "$RUNNER_TEMP" -xJf "$RUNNER_TEMP/winegdk-macos-x86_64.tar.xz"
+
+      - name: Compare D3D12 backends
+        env:
+          MCB_WORK: ${{ runner.temp }}/mcb-work
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash scripts/test-d3d12-backends.sh "$RUNNER_TEMP/winegdk"
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-logs
+          path: ${{ runner.temp }}/mcb-work/backend-*.log
+          if-no-files-found: ignore
