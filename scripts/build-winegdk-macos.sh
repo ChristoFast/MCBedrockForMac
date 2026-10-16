@@ -33,7 +33,7 @@ fi
 if [ "${MCB_SKIP_BREW:-0}" != "1" ]; then
     echo "== Installing build dependencies (Homebrew)"
     export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1
-    brew install bison flex gettext pkgconf freetype gnutls sdl2 molten-vk vulkan-loader mingw-w64
+    brew install bison flex gettext pkgconf freetype gnutls sdl2 molten-vk vulkan-loader mingw-w64 ccache
 fi
 BREW="$(brew --prefix)"
 export PATH="$BREW/opt/bison/bin:$BREW/opt/flex/bin:$PATH"
@@ -70,6 +70,13 @@ export MACOSX_DEPLOYMENT_TARGET=14.0
 export CPPFLAGS="-I$BREW/include"
 export LDFLAGS="-L$BREW/lib -Wl,-rpath,$BREW/lib"
 export CROSSCFLAGS="-O2"
+# ccache makes rebuilds after small changes take minutes instead of an hour.
+if command -v ccache >/dev/null; then
+    export CCACHE_DIR="${CCACHE_DIR:-$HOME/.ccache-mcb}" CCACHE_MAXSIZE=4G CCACHE_COMPILERCHECK=content
+    export CC="ccache clang" CXX="ccache clang++"
+    export x86_64_CC="ccache x86_64-w64-mingw32-gcc" i386_CC="ccache i686-w64-mingw32-gcc"
+    ccache -z >/dev/null
+fi
 mkdir -p "$BUILD"
 if [ ! -f "$BUILD/Makefile" ]; then
     echo "== Configuring"
@@ -102,6 +109,8 @@ if [ "$rc" -ne 0 ]; then
     exit 1
 fi
 
+command -v ccache >/dev/null && ccache -s | grep -E "Hits|Misses|Cache size" || true
+
 echo "== Installing to $DIST"
 rm -rf "$DIST"
 make -C "$BUILD" install-lib >/dev/null
@@ -112,7 +121,6 @@ fail=0
 for f in bin/wine bin/wineserver \
          lib/wine/x86_64-unix/ntdll.so \
          lib/wine/x86_64-windows/xgameruntime.dll \
-         lib/wine/x86_64-unix/xgameruntime.so \
          lib/wine/x86_64-windows/gameinput.dll \
          lib/wine/x86_64-windows/d3d12.dll \
          lib/wine/x86_64-unix/winevulkan.so \

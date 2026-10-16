@@ -21,10 +21,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Restore compile cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.ccache-mcb
+          key: ccache-winegdk-${{ hashFiles('third_party/winegdk.env', 'patches/winegdk/**') }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-winegdk-${{ hashFiles('third_party/winegdk.env', 'patches/winegdk/**') }}-
+            ccache-winegdk-
+
       - name: Build WineGDK
         env:
           MCB_WORK: ${{ runner.temp }}/mcb-work
         run: bash scripts/build-winegdk-macos.sh
+
+      - name: Save compile cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.ccache-mcb
+          key: ccache-winegdk-${{ hashFiles('third_party/winegdk.env', 'patches/winegdk/**') }}-${{ github.run_id }}
 
       - name: Upload logs
         if: always()
