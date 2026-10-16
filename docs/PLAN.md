@@ -84,8 +84,13 @@ Side finding: `winebus.so` crashes (`NSException`) while loading SDL2 at startup
 service fails. Fix before M4 (e.g. disable winebus's SDL backend and use its IOHID one).
 
 ### M2: Get the game files
-- [ ] Build the `xodus` Store downloader for macOS (BedrockOnLinux uses it to fetch the game under your account).
-- [ ] Port the launcher's sign-in and download code, starting from BedrockOnLinux's `bol/auth.py` and `bol/games.py`.
+- [x] Build `xodus-cli` natively for Apple Silicon (`scripts/build-xodus-macos.sh`, workflow *Build xodus*),
+      pinned commit + BedrockOnLinux's 7 patches. First build passed (2026-10-16, ~5 min, arm64 Mach-O).
+      xodus already supports macOS: Keychain token storage, WKWebView sign-in, and `run` decrypts the
+      protected segments into an `hdiutil` RAM disk.
+- [ ] Launcher commands wrapping it: `login` (`xodus-cli login`), `install` (`xodus-cli streaming 9NBLGGH2JHXJ <dir>`).
+      Never run in CI: logs and artifacts are public, and game files must never be uploaded.
+- [ ] First real sign-in + download on a real Mac (needs the owner's Microsoft account).
 - **Exit:** Minecraft for Windows is downloaded to your Mac with your account.
 
 ### M3: First launch (the big one)
