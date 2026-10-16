@@ -151,6 +151,8 @@ test_wine() {
     "$(dirname "$WINE_BIN")/wineserver" -k >/dev/null 2>&1
     if echo "$out" | grep -q "RESULT: D3D12 works"; then
         result PASS "$label: D3D12 renders"
+    elif echo "$out" | grep -q "GPU not supported: Apple Paravirtual"; then
+        result SKIP "$label: D3DMetal refuses virtual GPUs (CI); needs a real Mac"
     else
         result FAIL "$label: D3D12 probe failed (exit $rc)"
     fi
@@ -169,7 +171,9 @@ fi
 # ---------------------------------------------------------------------------
 step "B: Upstream Wine (vkd3d + MoltenVK)"
 if fetch_wine upstream Gcenx/macOS_Wine_builds 'devel.*osx64.*\.tar\.(xz|gz)$|osx64.*devel.*\.tar\.(xz|gz)$'; then
-    test_wine upstream
+    # wined3d defaults to OpenGL on macOS, which fails CreateDXGIFactory;
+    # Vulkan (MoltenVK) is the path vkd3d needs anyway.
+    test_wine upstream WINE_D3D_CONFIG=renderer=vulkan MVK_CONFIG_LOG_LEVEL=1 WINEDEBUG=err+all
 else
     result FAIL "B: could not download/unpack upstream Wine"
 fi
