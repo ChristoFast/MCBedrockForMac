@@ -6,6 +6,9 @@ on:
   push:
     paths:
       - scripts/build-winegdk-macos.sh
+      - scripts/bundle-macos-libs.sh
+      - scripts/winegdk-env.sh
+      - scripts/test-winegdk.sh
       - third_party/winegdk.env
       - patches/winegdk/**
       - .github/workflows/build-winegdk.yml
@@ -34,6 +37,9 @@ jobs:
             ${{ runner.temp }}/mcb-work/winegdk-build/config.log
           if-no-files-found: ignore
 
+      - name: Bundle Homebrew libraries
+        run: bash scripts/bundle-macos-libs.sh "${{ runner.temp }}/mcb-work/dist/winegdk"
+
       - name: Package
         run: tar -C "${{ runner.temp }}/mcb-work/dist" -cJf "${{ runner.temp }}/winegdk-macos-x86_64.tar.xz" winegdk
 
@@ -43,3 +49,24 @@ jobs:
           name: winegdk-macos-x86_64
           path: ${{ runner.temp }}/winegdk-macos-x86_64.tar.xz
           compression-level: 0
+
+  test:
+    # Apple Silicon runner: the build runs under Rosetta 2, like on a real M-series Mac.
+    needs: build
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: winegdk-macos-x86_64
+          path: ${{ runner.temp }}
+
+      - name: Unpack
+        run: tar -C "${{ runner.temp }}" -xJf "${{ runner.temp }}/winegdk-macos-x86_64.tar.xz"
+
+      - name: Test WineGDK under Rosetta
+        env:
+          MCB_WORK: ${{ runner.temp }}/mcb-work
+        run: bash scripts/test-winegdk.sh "${{ runner.temp }}/winegdk"
