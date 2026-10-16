@@ -10,7 +10,8 @@
     "what": "OpenSSL libcurl + DLL closure + CA-injecting XCurl shim + cryptbase RNG stub (BedrockOnLinux's reproducible build)",
     "repo": "Wyze3306/BedrockOnLinux",
     "asset": "openssl-xcurl-set-504bb166e4e7.tar.gz",
-    "sha256": "504bb166e4e737ad81c3ac8e7a917740b28478f69acd89e538c3bf921c29523f"
+    "sha256": "504bb166e4e737ad81c3ac8e7a917740b28478f69acd89e538c3bf921c29523f",
+    "url": "https://github.com/Wyze3306/BedrockOnLinux/releases/download/xcurl-504bb166e4e7/openssl-xcurl-set-504bb166e4e7.tar.gz"
   },
   "gdk_deps": {
     "what": "Open-source builds of libHttpClient.GDK.dll and XCurl.dll (minecraft-linux/mcpelauncher-gdk-dependencies)",

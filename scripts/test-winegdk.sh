@@ -28,7 +28,12 @@ check() { if [ "$1" = 0 ]; then echo "[PASS] $2"; else echo "[FAIL] $2"; failure
 echo "== $(sw_vers -productVersion) $(uname -m), $(sysctl -n machdep.cpu.brand_string)"
 echo "== $(wine --version)"
 
-t 300 wine wineboot -i >/dev/null 2>&1
+t 300 wine wineboot -i >"$WORK/wineboot.log" 2>&1
+if grep -q "NSInternalInconsistencyException\|winebus.*failed to start" "$WORK/wineboot.log"; then
+    check 1 "controller service (winebus) starts"; grep -m3 -E "NSInternal|winebus" "$WORK/wineboot.log" | sed 's/^/    /'
+else
+    check 0 "controller service (winebus) starts"
+fi
 out="$(t 60 wine cmd /c ver 2>/dev/null | tr -d '\r')"
 echo "$out" | grep -q Windows; check $? "wine runs Windows programs (${out//$'\n'/})"
 
