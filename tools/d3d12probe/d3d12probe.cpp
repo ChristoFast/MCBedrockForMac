@@ -30,15 +30,10 @@ static void say(const char* fmt, ...) {
 }
 
 static const char* fl_name(D3D_FEATURE_LEVEL fl) {
-    switch (fl) {
-        default:
-            if (fl == FL_12_2) return "12_2";
-            return fl > FL_12_2 ? "newer than 12_2" : "older than 11_0";
-        case D3D_FEATURE_LEVEL_12_1: return "12_1";
-        case D3D_FEATURE_LEVEL_12_0: return "12_0";
-        case D3D_FEATURE_LEVEL_11_1: return "11_1";
-        case D3D_FEATURE_LEVEL_11_0: return "11_0";
-    }
+    static char buf[16];
+    if (fl == FL_12_2) return "12_2";
+    snprintf(buf, sizeof buf, "%x_%x", (unsigned)fl >> 12, ((unsigned)fl >> 8) & 0xf);
+    return buf;
 }
 
 static LRESULT CALLBACK wndproc(HWND h, UINT m, WPARAM w, LPARAM l) {

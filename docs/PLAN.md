@@ -42,6 +42,9 @@ Run `bash scripts/m0-check.sh` on the Mac. It:
       (with Apple's D3DMetal) and upstream Wine (vkd3d + MoltenVK);
 - [ ] runs our own D3D12 test program (`tools/d3d12probe`) through each.
 - **Exit:** at least one D3D12 path renders on your M5. That decides the graphics route for M3.
+- **Result on GitHub's M1 VM (2026-10-16):** Rosetta ✅, both Wines run programs ✅.
+  Upstream Wine 11.18 + vkd3d + MoltenVK renders D3D12 ✅ (with `WINE_D3D_CONFIG=renderer=vulkan`;
+  feature level 11_0, shader model 6.0, binding tier 1). D3DMetal refuses VM GPUs, so it's untested until a real Mac.
 
 ### M1: Build WineGDK for macOS
 - [ ] A GitHub Actions workflow on a **macOS arm64 runner** that builds WineGDK as x86-64 (for Rosetta).
