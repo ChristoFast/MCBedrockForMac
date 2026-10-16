@@ -3,7 +3,7 @@
 A free, open-source launcher that runs **Minecraft: Bedrock Edition for Windows** on Apple Silicon Macs
 (built for an M5 MacBook Pro), with no virtual machine and no paid software.
 
-> **Status:** milestone 1 done (WineGDK runs on Apple Silicon and renders D3D12). Next: milestone 2 (getting the game files). Nothing is playable yet. See **[docs/PLAN.md](docs/PLAN.md)** for how it will work and the milestones.
+> **Status:** milestones 0-1 done, milestone 2 built (launcher + downloader). Next: first launch on a real Mac (milestone 3). Nothing is playable yet. See **[docs/PLAN.md](docs/PLAN.md)** for how it will work and the milestones.
 
 ## The idea
 
@@ -38,12 +38,22 @@ Minecraft for Windows (x86-64, D3D12)    ← downloaded from the Microsoft Store
 This project builds on WineGDK (LGPL), BedrockOnLinux (MIT) and Wine (LGPL). It is not affiliated with Mojang or
 Microsoft. It never distributes the game; you download it under your own license.
 
-## Try milestone 0
+## Try it (on an Apple Silicon Mac)
 
-On your Mac, in Terminal:
+> Not playable yet: the first real launch (milestone 3) still needs testing on a real Mac.
 
 ```bash
 git clone https://github.com/ChristoFast/MCBedrockForMac.git
 cd MCBedrockForMac
-bash scripts/m0-check.sh
+./mcb setup      # downloads the engine (WineGDK) + xodus from the nightly release, creates the Wine prefix
+./mcb doctor     # checks everything is in place
+./mcb selftest   # runs Windows programs, loads the Xbox runtime, renders D3D12
+./mcb login      # sign in with the Microsoft account that owns Minecraft
+./mcb install    # downloads Minecraft for Windows from the Microsoft Store (~1-2 GB)
+./mcb play       # starts the game
 ```
+
+Everything lives in `~/Library/Application Support/MCBedrockForMac` (`./mcb paths`). Sign-in tokens are kept
+in the macOS Keychain by xodus. `./mcb install preview` / `./mcb play preview` use Minecraft Preview.
+
+The older foundation check is still available: `bash scripts/m0-check.sh`.

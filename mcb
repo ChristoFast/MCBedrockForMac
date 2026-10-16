@@ -1,0 +1,200 @@
+#!/bin/bash
+# mcb: MCBedrockForMac launcher. Runs Minecraft: Bedrock Edition (Windows) on
+# Apple Silicon through WineGDK + Rosetta 2, using your own Microsoft account.
+#
+#   ./mcb setup              download the engine (WineGDK) and xodus, create the Wine prefix
+#   ./mcb login              sign in to the Microsoft account that owns Minecraft
+#   ./mcb install [preview]  download / update the game from the Microsoft Store
+#   ./mcb play [preview]     start the game
+#   ./mcb doctor             check that everything is in place
+#   ./mcb selftest           run the engine's self-test (Windows programs, GDK DLLs, D3D12)
+#   ./mcb logout | paths | wine <args...>
+#
+# Written for the bash 3.2 that ships with macOS.
+
+set -u
+
+REPO="$(cd "$(dirname "$0")" && pwd)"
+MCB_HOME="${MCB_HOME:-$HOME/Library/Application Support/MCBedrockForMac}"
+ENGINE="$MCB_HOME/engine/winegdk"
+XODUS="$MCB_HOME/bin/xodus-cli"
+GAMES="$MCB_HOME/games"
+LOGS="$MCB_HOME/logs"
+export WINEPREFIX="${WINEPREFIX:-$MCB_HOME/prefix}"
+
+RELEASE_URL="${MCB_RELEASE_URL:-https://github.com/ChristoFast/MCBedrockForMac/releases/download/nightly}"
+ENGINE_ASSET=winegdk-macos-x86_64.tar.xz
+XODUS_ASSET=xodus-cli-macos-arm64.tar.gz
+
+# Microsoft Store product ids (see patches/xodus/README.md upstream notes).
+product_id() {
+    case "${1:-release}" in
+        release) echo 9NBLGGH2JHXJ ;;   # Minecraft for Windows
+        preview) echo 9P5X4QVLC2XR ;;   # Minecraft Preview for Windows
+        *) die "unknown edition '$1' (use: release or preview)" ;;
+    esac
+}
+
+say()  { printf '%s\n' "$*"; }
+step() { printf '\n== %s\n' "$*"; }
+die()  { printf 'mcb: %s\n' "$*" >&2; exit 1; }
+ok()   { printf '  [ok]   %s\n' "$*"; }
+bad()  { printf '  [FAIL] %s\n' "$*"; FAILED=$((FAILED + 1)); }
+warn() { printf '  [warn] %s\n' "$*"; }
+
+need_engine() { [ -x "$ENGINE/bin/wine" ] || die "engine not installed; run: ./mcb setup"; }
+need_xodus()  { [ -x "$XODUS" ] || die "xodus not installed; run: ./mcb setup"; }
+
+engine_env() {
+    need_engine
+    # shellcheck source=scripts/winegdk-env.sh
+    . "$REPO/scripts/winegdk-env.sh" "$ENGINE"
+}
+
+check_host() {
+    [ "$(uname -s)" = Darwin ] || die "this launcher runs on macOS"
+    [ "$(uname -m)" = arm64 ] || die "needs an Apple Silicon Mac (or open Terminal without Rosetta)"
+    local major
+    major="$(sw_vers -productVersion | cut -d. -f1)"
+    [ "$major" -ge 14 ] || die "needs macOS 14 or newer (you have $(sw_vers -productVersion))"
+}
+
+ensure_rosetta() {
+    arch -x86_64 /usr/bin/true 2>/dev/null && return 0
+    say "Rosetta 2 is required to run Windows x86-64 code."
+    printf "Install it now? (needs your password) [y/N] "
+    local yn; read -r yn
+    case "$yn" in y|Y) sudo softwareupdate --install-rosetta --agree-to-license ;; esac
+    arch -x86_64 /usr/bin/true 2>/dev/null || die "Rosetta 2 is not installed"
+}
+
+# fetch <asset> <dest-file>: local override (MCB_LOCAL_DIR) or the nightly release.
+fetch_asset() {
+    if [ -n "${MCB_LOCAL_DIR:-}" ]; then
+        cp "$MCB_LOCAL_DIR/$1" "$2" || die "missing $MCB_LOCAL_DIR/$1"
+    else
+        say "  downloading $1"
+        curl -fL --progress-bar -o "$2" "$RELEASE_URL/$1" || die "download failed: $RELEASE_URL/$1"
+    fi
+}
+
+cmd_setup() {
+    check_host
+    ensure_rosetta
+    mkdir -p "$MCB_HOME/downloads" "$MCB_HOME/bin" "$MCB_HOME/engine" "$GAMES" "$LOGS"
+    local dl="$MCB_HOME/downloads"
+
+    step "Downloading the engine and xodus"
+    fetch_asset "$ENGINE_ASSET" "$dl/$ENGINE_ASSET"
+    fetch_asset "$XODUS_ASSET" "$dl/$XODUS_ASSET"
+    if [ -z "${MCB_LOCAL_DIR:-}" ]; then
+        fetch_asset SHA256SUMS "$dl/SHA256SUMS"
+        ( cd "$dl" && grep -E " ($ENGINE_ASSET|$XODUS_ASSET)\$" SHA256SUMS | shasum -a 256 -c - ) \
+            || die "checksum mismatch; delete $dl and try again"
+    fi
+
+    step "Installing"
+    rm -rf "$ENGINE.new" && mkdir -p "$ENGINE.new"
+    tar -xJf "$dl/$ENGINE_ASSET" -C "$ENGINE.new" --strip-components 1 || die "could not unpack the engine"
+    rm -rf "$ENGINE" && mv "$ENGINE.new" "$ENGINE"
+    tar -xzf "$dl/$XODUS_ASSET" -C "$MCB_HOME/bin" || die "could not unpack xodus"
+    chmod +x "$XODUS"
+    xattr -dr com.apple.quarantine "$ENGINE" "$XODUS" 2>/dev/null || true
+    ok "engine: $("$ENGINE/bin/wine" --version 2>/dev/null)"
+    ok "xodus:  $("$XODUS" --version 2>/dev/null)"
+
+    step "Creating the Wine prefix (first run takes a minute)"
+    engine_env
+    wine wineboot -i >"$LOGS/wineboot.log" 2>&1 || warn "wineboot reported an error (see $LOGS/wineboot.log)"
+    wineserver -w 2>/dev/null
+    ok "prefix: $WINEPREFIX"
+
+    step "Done"
+    say "Next: ./mcb login, then ./mcb install, then ./mcb play"
+}
+
+cmd_login()  { need_xodus; "$XODUS" login; }
+cmd_logout() { need_xodus; "$XODUS" logout "$@"; }
+
+cmd_install() {
+    need_xodus
+    local ed="${1:-release}" pid
+    pid="$(product_id "$ed")"
+    mkdir -p "$GAMES/$ed"
+    step "Downloading Minecraft ($ed, $pid) with your account"
+    say "Only changed parts are downloaded on updates."
+    "$XODUS" streaming "$pid" "$GAMES/$ed" || die "download failed (are you signed in? ./mcb login)"
+    [ -e "$GAMES/$ed/Minecraft.Windows.exe" ] || warn "Minecraft.Windows.exe not found in $GAMES/$ed"
+    ok "installed to $GAMES/$ed"
+}
+
+cmd_play() {
+    need_xodus
+    local ed="${1:-release}"
+    product_id "$ed" >/dev/null
+    [ -e "$GAMES/$ed/Minecraft.Windows.exe" ] || die "Minecraft ($ed) is not installed; run: ./mcb install $ed"
+    engine_env
+    [ -e "$WINEPREFIX/drive_c/windows/system32/xgameruntime.dll.threading" ] \
+        || warn "xgameruntime.dll.threading is missing; the game may refuse to start (milestone 3 work)"
+    mkdir -p "$LOGS"
+    local log
+    log="$LOGS/play-$(date +%Y%m%d-%H%M%S).log"
+    export WINEDEBUG="${WINEDEBUG:-err+all,fixme-all}"
+    say "Starting Minecraft ($ed). Log: $log"
+    # xodus fetches the game license, decrypts the protected segments into a RAM
+    # disk, and starts Wine with WINE_DLL_FILE_MAP pointing at them.
+    "$XODUS" run "$GAMES/$ed" "$ENGINE/bin/wine" 2>&1 | tee "$log"
+}
+
+cmd_doctor() {
+    FAILED=0
+    step "Host"
+    if [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ]; then
+        ok "Apple Silicon, macOS $(sw_vers -productVersion), $(sysctl -n machdep.cpu.brand_string)"
+    else bad "not an Apple Silicon Mac"; fi
+    if arch -x86_64 /usr/bin/true 2>/dev/null; then ok "Rosetta 2"; else bad "Rosetta 2 missing (./mcb setup installs it)"; fi
+    local free; free="$(df -g "$HOME" | awk 'NR==2 {print $4}')"
+    if [ "${free:-0}" -ge 20 ]; then ok "$free GB free"; else warn "only ${free:-?} GB free (the game needs ~10 GB)"; fi
+
+    step "Install"
+    if [ -x "$ENGINE/bin/wine" ]; then ok "engine $("$ENGINE/bin/wine" --version 2>/dev/null)"; else bad "engine missing (./mcb setup)"; fi
+    if [ -x "$XODUS" ]; then ok "xodus $("$XODUS" --version 2>/dev/null)"; else bad "xodus missing (./mcb setup)"; fi
+    if [ -f "$WINEPREFIX/system.reg" ]; then ok "Wine prefix"; else bad "Wine prefix missing (./mcb setup)"; fi
+    if [ -e "$WINEPREFIX/drive_c/windows/system32/xgameruntime.dll.threading" ]; then ok "xgameruntime.dll.threading"
+    else warn "xgameruntime.dll.threading missing (needed to start the game; milestone 3)"; fi
+    local ed
+    for ed in release preview; do
+        if [ -e "$GAMES/$ed/Minecraft.Windows.exe" ]; then ok "Minecraft ($ed) installed"
+        else say "  [ -- ] Minecraft ($ed) not installed"; fi
+    done
+
+    step "Result"
+    if [ "$FAILED" = 0 ]; then say "No problems found."; else say "$FAILED problem(s) found."; fi
+    return "$FAILED"
+}
+
+cmd_selftest() {
+    need_engine
+    MCB_WORK="$MCB_HOME/selftest" WINEPREFIX="$MCB_HOME/selftest/prefix" \
+        bash "$REPO/scripts/test-winegdk.sh" "$ENGINE"
+}
+
+cmd_paths() {
+    say "data:   $MCB_HOME"
+    say "engine: $ENGINE"
+    say "xodus:  $XODUS"
+    say "prefix: $WINEPREFIX"
+    say "games:  $GAMES"
+    say "logs:   $LOGS"
+}
+
+cmd_wine() { engine_env; wine "$@"; }
+
+usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; }
+
+cmd="${1:-help}"; [ $# -gt 0 ] && shift
+case "$cmd" in
+    setup|login|logout|install|play|doctor|selftest|paths|wine) "cmd_$cmd" "$@" ;;
+    help|-h|--help) usage ;;
+    *) usage; exit 1 ;;
+esac

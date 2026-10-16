@@ -1,0 +1,30 @@
+# Runs the launcher the way a user would, on Apple Silicon, from the public
+# nightly release. Never signs in or downloads the game (CI logs are public).
+name: Test launcher (macOS)
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Release nightly"]
+    types: [completed]
+  push:
+    paths:
+      - mcb
+      - scripts/winegdk-env.sh
+      - .github/workflows/test-launcher.yml
+
+jobs:
+  launcher:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./mcb help
+      - run: ./mcb setup < /dev/null
+      - run: ./mcb doctor
+      - run: ./mcb selftest
+      - name: Refuses to play without the game
+        run: |
+          if ./mcb play 2>err.txt; then echo "play should have failed"; exit 1; fi
+          grep -q "is not installed" err.txt && cat err.txt

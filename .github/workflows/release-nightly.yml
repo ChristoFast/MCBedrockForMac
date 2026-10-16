@@ -1,0 +1,69 @@
+# Publishes the latest successful WineGDK and xodus builds as the public
+# "nightly" release, which `./mcb setup` downloads (artifacts need a GitHub
+# login to download; release assets don't).
+name: Release nightly
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Build WineGDK (macOS)", "Build xodus (macOS)"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: release-nightly
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect latest successful builds
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          latest() { gh run list --workflow "$1" --branch main --status success --limit 1 --json databaseId,headSha --jq '.[0] | "\(.databaseId) \(.headSha)"'; }
+          read -r wine_run wine_sha < <(latest build-winegdk.yml)
+          read -r xodus_run xodus_sha < <(latest build-xodus.yml)
+          echo "WineGDK from run $wine_run ($wine_sha), xodus from run $xodus_run ($xodus_sha)"
+          gh run download "$wine_run" -n winegdk-macos-x86_64 -D out
+          gh run download "$xodus_run" -n xodus-cli-macos-arm64 -D xodus
+          chmod +x xodus/xodus-cli
+          tar -C xodus -czf out/xodus-cli-macos-arm64.tar.gz xodus-cli
+          ( cd out && sha256sum winegdk-macos-x86_64.tar.xz xodus-cli-macos-arm64.tar.gz > SHA256SUMS )
+          cat out/SHA256SUMS
+          . third_party/winegdk.env
+          . third_party/xodus.env
+          cat > notes.md <<EOF
+          Automatic build of the MCBedrockForMac engine for Apple Silicon. Install with \`./mcb setup\`.
+
+          | Asset | Built by | Source |
+          |---|---|---|
+          | \`winegdk-macos-x86_64.tar.xz\` | [run $wine_run](https://github.com/$GH_REPO/actions/runs/$wine_run) at \`${wine_sha:0:7}\` | [WineGDK](${WINEGDK_REPO}) \`${WINEGDK_COMMIT:0:12}\` + [\`patches/winegdk\`](https://github.com/$GH_REPO/tree/${wine_sha}/patches/winegdk) (LGPL-2.1+) |
+          | \`xodus-cli-macos-arm64.tar.gz\` | [run $xodus_run](https://github.com/$GH_REPO/actions/runs/$xodus_run) at \`${xodus_sha:0:7}\` | [xodus](${XODUS_REPO}) \`${XODUS_COMMIT:0:12}\` + [\`patches/xodus\`](https://github.com/$GH_REPO/tree/${xodus_sha}/patches/xodus) (GPL-3.0) |
+
+          The engine bundles Homebrew libraries under their own licenses: MoltenVK and the Vulkan loader (Apache-2.0),
+          FreeType (FTL/GPL-2.0), GnuTLS, Nettle, GMP, libtasn1, libidn2, libunistring, p11-kit, gettext (LGPL),
+          SDL2 (zlib), libpng (libpng license). Not affiliated with Mojang or Microsoft; contains no game files.
+          EOF
+          sed -i 's/^          //' notes.md
+
+      - name: Publish
+        run: |
+          set -euo pipefail
+          if ! gh release view nightly >/dev/null 2>&1; then
+            gh release create nightly --prerelease --target main --title "Nightly" --notes-file notes.md
+          else
+            gh release edit nightly --notes-file notes.md
+          fi
+          gh release upload nightly out/* --clobber
