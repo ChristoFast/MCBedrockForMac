@@ -80,8 +80,9 @@ So the Linux graphics stack does not work on MoltenVK. Routes for Minecraft's D3
 3. **KosmicKrisp** (LunarG's conformant Vulkan 1.4 driver on Metal). Geometry/tessellation support is in
    progress; once it lands, DXVK/vkd3d-proton may work. Re-run the backend test then.
 
-Side finding: `winebus.so` crashes (`NSException`) while loading SDL2 at startup, so the controller
-service fails. Fix before M4 (e.g. disable winebus's SDL backend and use its IOHID one).
+Side finding (fixed 2026-10-16): `winebus.so` crashed (`NSException`) loading Homebrew's SDL2 (sdl2-compat raises an
+AppKit dialog off the main thread). WineGDK is now built `--without-sdl`; winebus uses its native IOHID backend,
+and `test-winegdk.sh` checks that the controller service starts.
 
 ### M2: Get the game files
 - [x] Build `xodus-cli` natively for Apple Silicon (`scripts/build-xodus-macos.sh`, workflow *Build xodus*),
