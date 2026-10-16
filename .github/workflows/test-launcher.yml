@@ -24,6 +24,8 @@ jobs:
       - uses: actions/checkout@v4
       - run: ./mcb help
       - run: ./mcb setup < /dev/null
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - run: ./mcb doctor
       - run: ./mcb selftest
       - name: Prepare a placeholder game folder (no game files in CI)

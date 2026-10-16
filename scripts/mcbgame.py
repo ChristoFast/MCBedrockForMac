@@ -69,8 +69,11 @@ def curl(url, dest):
 
 
 def curl_json(url):
-    out = subprocess.run(["curl", "-fsSL", "-H", "Accept: application/vnd.github+json", url],
-                         check=True, capture_output=True).stdout
+    cmd = ["curl", "-fsSL", "--retry", "4", "--retry-all-errors", "--retry-delay", "2",
+           "-H", "Accept: application/vnd.github+json"]
+    if os.environ.get("GITHUB_TOKEN"):   # optional; avoids the anonymous rate limit
+        cmd += ["-H", "Authorization: Bearer " + os.environ["GITHUB_TOKEN"]]
+    out = subprocess.run(cmd + [url], check=True, capture_output=True).stdout
     return json.loads(out)
 
 
@@ -90,8 +93,8 @@ def release_asset_url(repo, asset):
     """Finds an asset across all of a repo's releases (it stays in the release it
     was first uploaded to, which may not be the newest)."""
     page = 1
-    while page < 20:
-        rels = curl_json(f"https://api.github.com/repos/{repo}/releases?per_page=100&page={page}")
+    while page < 40:
+        rels = curl_json(f"https://api.github.com/repos/{repo}/releases?per_page=20&page={page}")
         if not rels:
             break
         for rel in rels:
@@ -138,10 +141,13 @@ def fetch_xcurl_set(comp_dir):
     archive = comp_dir / c["asset"]
     setdir = comp_dir / "openssl-xcurl-set"
     if not matches(archive, c["sha256"]):
-        say("OpenSSL XCurl set: looking up the release")
-        url = release_asset_url(c["repo"], c["asset"])
+        url = c.get("url")
         if not url:
-            sys.exit(f"mcb: {c['asset']} not found in {c['repo']} releases")
+            say("OpenSSL XCurl set: looking up the release")
+            url = release_asset_url(c["repo"], c["asset"])
+            if not url:
+                sys.exit(f"mcb: {c['asset']} not found in {c['repo']} releases")
+            say(f"OpenSSL XCurl set: found {url}")
         fetch_pinned(url, archive, c["sha256"], "OpenSSL XCurl set")
     else:
         say("OpenSSL XCurl set: ok (cached)")
