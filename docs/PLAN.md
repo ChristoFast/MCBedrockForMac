@@ -47,11 +47,15 @@ Run `bash scripts/m0-check.sh` on the Mac. It:
   feature level 11_0, shader model 6.0, binding tier 1). D3DMetal refuses VM GPUs, so it's untested until a real Mac.
 
 ### M1: Build WineGDK for macOS
-- [ ] A GitHub Actions workflow on a **macOS arm64 runner** that builds WineGDK as x86-64 (for Rosetta).
-      The repo is public, so these runs are free.
-- [ ] Publish the build as a downloadable artifact.
-- [ ] Fix the Linux-only parts (WineGDK uses Linux `ntsync`; macOS needs Wine's fallback sync or `msync`).
-- **Exit:** a WineGDK build that starts `winecfg` on your Mac.
+- [x] `scripts/build-winegdk-macos.sh` + `.github/workflows/build-winegdk.yml`: builds WineGDK (pinned in
+      `third_party/winegdk.env`) as x86-64 on GitHub's Intel Mac runner, with ccache for fast rebuilds.
+- [x] First build (2026-10-16): **the whole of WineGDK compiles on macOS with no source changes**, including
+      `xgameruntime.dll` and `gameinput.dll`. (~65 min cold.)
+- [ ] Bundle the Homebrew libraries (`scripts/bundle-macos-libs.sh`) and publish the build as an artifact.
+- [ ] Test on an Apple Silicon runner under Rosetta (`scripts/test-winegdk.sh`): Windows programs, GDK DLLs, D3D12.
+- [ ] Later, for performance: Linux `ntsync` doesn't exist on macOS; Wine falls back to server-side sync,
+      which BedrockOnLinux found makes Minecraft's threads slow. macOS needs an `msync`-style fast path.
+- **Exit:** a WineGDK build that passes `test-winegdk.sh` on Apple Silicon.
 
 ### M2: Get the game files
 - [ ] Build the `xodus` Store downloader for macOS (BedrockOnLinux uses it to fetch the game under your account).
