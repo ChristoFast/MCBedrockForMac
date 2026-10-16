@@ -1,0 +1,31 @@
+# Runs the milestone 0 foundation check on a GitHub-hosted Apple Silicon Mac.
+# Note: these runners are VMs with a paravirtual GPU, so the D3D12 result here
+# can differ from a real Mac. Mac minutes count 10x on private repos, so this
+# only runs when started by hand (Actions tab -> "M0 check" -> Run workflow).
+name: M0 check (macOS)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  m0:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run m0-check.sh
+        env:
+          MCB_WORK: ${{ runner.temp }}/mcb-work
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash scripts/m0-check.sh < /dev/null
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m0-report
+          path: |
+            ${{ runner.temp }}/mcb-work/m0-report.txt
+            ${{ runner.temp }}/mcb-work/probe-*.log
+          if-no-files-found: warn

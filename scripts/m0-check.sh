@@ -79,7 +79,12 @@ fi
 #   pick_asset <owner/repo> <include-regex>  -> prints "name<TAB>url"
 pick_asset() {
     local json
-    json="$(curl -fsSL "https://api.github.com/repos/$1/releases/latest")" || return 1
+    # In CI, the token avoids GitHub's shared-IP rate limit.
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+        json="$(curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" "https://api.github.com/repos/$1/releases/latest")" || return 1
+    else
+        json="$(curl -fsSL "https://api.github.com/repos/$1/releases/latest")" || return 1
+    fi
     osascript -l JavaScript -e '
         function run(argv) {
             var rel = JSON.parse(argv[0]);
