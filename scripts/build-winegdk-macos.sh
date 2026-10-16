@@ -129,11 +129,16 @@ for f in bin/wine bin/wineserver \
 done
 [ "$fail" = 0 ] || { echo "!! required files missing" >&2; exit 1; }
 
-echo "== Smoke test"
+# Quick, non-fatal check on the build machine. The real test is
+# scripts/test-winegdk.sh on Apple Silicon; GitHub's Intel VMs have no usable
+# Metal GPU, so anything touching Vulkan can stall here.
+echo "== Smoke test (non-fatal)"
 export WINEPREFIX="$WORK/prefix-winegdk" WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml="
 "$DIST/bin/wine" --version
-perl -e 'alarm shift; exec @ARGV' 300 "$DIST/bin/wine" wineboot -i >/dev/null 2>&1 || true
-perl -e 'alarm shift; exec @ARGV' 60 "$DIST/bin/wine" cmd /c ver | tr -d '\r'
+perl -e 'alarm shift; exec @ARGV' 180 "$DIST/bin/wine" wineboot -i >/dev/null 2>&1 \
+    || echo "   wineboot did not finish in 180 s (exit $?)"
+perl -e 'alarm shift; exec @ARGV' 60 "$DIST/bin/wine" cmd /c ver 2>/dev/null | tr -d '\r' \
+    || echo "   cmd /c ver did not finish (exit $?)"
 "$DIST/bin/wineserver" -k 2>/dev/null || true
 
 echo "== Done: $DIST"
