@@ -15,10 +15,9 @@ EXT="$DIST/lib/external"
 BREW="$(brew --prefix)"
 mkdir -p "$EXT"
 
-# Libraries Wine loads with dlopen(), so otool can't see them. Homebrew's SDL2 is
-# sdl2-compat, which itself dlopen()s SDL3; without it, SDL2's initializer shows an
-# error dialog off the main thread and macOS kills winebus (the controller service).
-DLOPENED="libfreetype.6.dylib libgnutls.30.dylib libSDL2-2.0.0.dylib libSDL3.0.dylib libvulkan.1.dylib libMoltenVK.dylib"
+# Libraries Wine loads with dlopen(), so otool can't see them. (No SDL: the
+# engine is built without it, see build-winegdk-macos.sh.)
+DLOPENED="libfreetype.6.dylib libgnutls.30.dylib libvulkan.1.dylib libMoltenVK.dylib"
 
 # Prints the Homebrew dependencies of a Mach-O file.
 brew_deps() {

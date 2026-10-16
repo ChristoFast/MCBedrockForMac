@@ -33,7 +33,7 @@ fi
 if [ "${MCB_SKIP_BREW:-0}" != "1" ]; then
     echo "== Installing build dependencies (Homebrew)"
     export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1
-    brew install bison flex gettext pkgconf freetype gnutls sdl2 molten-vk vulkan-loader mingw-w64 ccache
+    brew install bison flex gettext pkgconf freetype gnutls molten-vk vulkan-loader mingw-w64 ccache
 fi
 BREW="$(brew --prefix)"
 export PATH="$BREW/opt/bison/bin:$BREW/opt/flex/bin:$PATH"
@@ -65,7 +65,10 @@ fi
 
 # --- Configure -------------------------------------------------------------------
 # Options follow Gcenx's MacPorts wine-devel Portfile: no X11/OpenGL (Vulkan via
-# MoltenVK instead), CoreAudio, and both PE architectures for WoW64.
+# MoltenVK instead), CoreAudio, and both PE architectures for WoW64. One difference:
+# no SDL. Homebrew's SDL2 is sdl2-compat, whose initializer can raise an AppKit
+# dialog off the main thread and kill winebus; winebus's IOHID backend handles
+# controllers natively on macOS instead.
 export MACOSX_DEPLOYMENT_TARGET=14.0
 export CPPFLAGS="-I$BREW/include"
 export LDFLAGS="-L$BREW/lib -Wl,-rpath,$BREW/lib"
@@ -90,7 +93,7 @@ if [ ! -f "$BUILD/Makefile" ]; then
         --with-gettext --without-gettextpo --without-gphoto --with-gnutls \
         --without-gssapi --without-gstreamer --without-krb5 --without-netapi \
         --with-opencl --without-opengl --without-oss --with-pcap \
-        --with-pthread --without-pulse --without-sane --with-sdl \
+        --with-pthread --without-pulse --without-sane --without-sdl \
         --without-udev --without-usb --without-v4l2 --with-vulkan \
         --without-wayland --without-x ) 2>&1 | tee "$WORK/winegdk-configure.log"
     # Surface what configure decided to leave out.

@@ -54,7 +54,7 @@ jobs:
 
           The engine bundles Homebrew libraries under their own licenses: MoltenVK and the Vulkan loader (Apache-2.0),
           FreeType (FTL/GPL-2.0), GnuTLS, Nettle, GMP, libtasn1, libidn2, libunistring, p11-kit, gettext (LGPL),
-          SDL2 (zlib), libpng (libpng license). Not affiliated with Mojang or Microsoft; contains no game files.
+          libpng (libpng license). Not affiliated with Mojang or Microsoft; contains no game files.
           EOF
           sed -i 's/^          //' notes.md
 
