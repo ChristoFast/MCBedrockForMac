@@ -35,16 +35,18 @@ Graphics translation ── Option A: D3DMetal (Apple Game Porting Toolkit) ─�
 
 Each milestone ends with something you can run on your Mac and report back on.
 
-### M0: Prove the foundation by hand
-- [ ] Install Rosetta 2 and a free prebuilt Wine for macOS. Confirm a simple Windows program runs.
-- [ ] Download Apple's **Game Porting Toolkit** (free Apple Developer account) and confirm D3DMetal
-      runs a D3D12 sample.
-- **Exit:** Wine + D3D12 work on your M5.
+### M0: Prove the foundation
+Run `bash scripts/m0-check.sh` on the Mac. It:
+- [ ] checks Rosetta 2 (and offers to install it);
+- [ ] downloads two free prebuilt Wine builds into `~/MCBedrockForMac-work`: the Game Porting Toolkit Wine
+      (with Apple's D3DMetal) and upstream Wine (vkd3d + MoltenVK);
+- [ ] runs our own D3D12 test program (`tools/d3d12probe`) through each.
+- **Exit:** at least one D3D12 path renders on your M5. That decides the graphics route for M3.
 
 ### M1: Build WineGDK for macOS
-- [ ] Set up a GitHub Actions workflow on a **macOS arm64 runner** that builds WineGDK as x86-64 (for Rosetta).
+- [ ] A build script that builds WineGDK as x86-64 (for Rosetta) **on your Mac**. The repo is private, so GitHub's
+      macOS runners would burn the free minutes fast.
 - [ ] Fix the Linux-only parts (WineGDK uses Linux `ntsync`; macOS needs Wine's fallback sync or `msync`).
-- [ ] Publish the build as a downloadable artifact.
 - **Exit:** a WineGDK build that starts `winecfg` on your Mac.
 
 ### M2: Get the game files
@@ -81,5 +83,7 @@ Each milestone ends with something you can run on your Mac and report back on.
 
 ## Development loop
 
-The code is written in this repo. It's built on GitHub Actions macOS runners where possible, and tested on your
-Mac. You run each step and paste the output back, which drives the next change.
+- Code is written in this repo.
+- Windows-side pieces (test programs, stub DLLs) are cross-compiled on Linux and committed under `tools/bin/`.
+- Mac-side pieces (WineGDK) are built and tested on your Mac, by scripts in `scripts/`.
+- Each script writes a report; you paste it back, and that drives the next change.

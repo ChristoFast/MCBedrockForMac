@@ -3,7 +3,7 @@
 A free, open-source launcher that runs **Minecraft: Bedrock Edition for Windows** on Apple Silicon Macs
 (built for an M5 MacBook Pro), with no virtual machine and no paid software.
 
-> **Status:** planning. Nothing is playable yet. See **[docs/PLAN.md](docs/PLAN.md)** for how it will work and the milestones.
+> **Status:** milestone 0 (foundation check). Nothing is playable yet. See **[docs/PLAN.md](docs/PLAN.md)** for how it will work and the milestones.
 
 ## The idea
 
@@ -37,3 +37,13 @@ Minecraft for Windows (x86-64, D3D12)    ← downloaded from the Microsoft Store
 
 This project builds on WineGDK (LGPL), BedrockOnLinux (MIT) and Wine (LGPL). It is not affiliated with Mojang or
 Microsoft. It never distributes the game; you download it under your own license.
+
+## Try milestone 0
+
+On your Mac, in Terminal:
+
+```bash
+git clone https://github.com/ChristoFast/MCBedrockForMac.git
+cd MCBedrockForMac
+bash scripts/m0-check.sh
+```
