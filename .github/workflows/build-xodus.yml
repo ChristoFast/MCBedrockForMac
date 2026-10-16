@@ -1,0 +1,40 @@
+# Milestone 2: build xodus-cli (Minecraft sign-in + download) for Apple Silicon.
+# Never signs in or downloads the game here: CI logs and artifacts are public.
+name: Build xodus (macOS)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/build-xodus-macos.sh
+      - third_party/xodus.env
+      - patches/xodus/**
+      - .github/workflows/build-xodus.yml
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ${{ runner.temp }}/mcb-work/xodus-src/target
+          key: xodus-${{ hashFiles('third_party/xodus.env', 'patches/xodus/**') }}
+          restore-keys: xodus-
+
+      - name: Build xodus-cli
+        env:
+          MCB_WORK: ${{ runner.temp }}/mcb-work
+        run: bash scripts/build-xodus-macos.sh
+
+      - name: Upload xodus-cli
+        uses: actions/upload-artifact@v4
+        with:
+          name: xodus-cli-macos-arm64
+          path: ${{ runner.temp }}/mcb-work/dist/xodus-cli
