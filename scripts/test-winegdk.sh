@@ -14,7 +14,13 @@ WORK="${MCB_WORK:-$HOME/MCBedrockForMac-work}"
 export WINEPREFIX="${WINEPREFIX:-$WORK/prefix-winegdk-test}"
 export WINEDEBUG="${WINEDEBUG:-err+all}"
 mkdir -p "$WORK"
-t() { local s="$1"; shift; perl -e 'alarm shift; exec @ARGV' "$s" "$@"; }
+# Timeout helper. /usr/bin/perl is SIP-protected, so macOS strips DYLD_* from its
+# environment; /usr/bin/env puts the library path back before exec'ing Wine.
+t() {
+    local s="$1"; shift
+    perl -e 'alarm shift; exec @ARGV' "$s" \
+        /usr/bin/env "DYLD_FALLBACK_LIBRARY_PATH=$DYLD_FALLBACK_LIBRARY_PATH" "$@"
+}
 
 failures=0
 check() { if [ "$1" = 0 ]; then echo "[PASS] $2"; else echo "[FAIL] $2"; failures=$((failures + 1)); fi; }
@@ -38,7 +44,15 @@ done
 
 t 120 wine "$REPO/tools/bin/d3d12probe.exe" >"$WORK/probe-winegdk.log" 2>&1
 grep -v -E "validate_state_table|^\s*$" "$WORK/probe-winegdk.log" | tr -d '\r' | sed 's/^/    /' | tail -n 25
-grep -q "RESULT: D3D12 works" "$WORK/probe-winegdk.log"; check $? "D3D12 renders"
+if grep -q "RESULT: D3D12 works" "$WORK/probe-winegdk.log"; then
+    check 0 "D3D12 renders"
+else
+    check 1 "D3D12 renders"
+    echo "    -- rerunning with graphics logging --"
+    WINEDEBUG="err+all,warn+vulkan,warn+dxgi,warn+d3d,warn+d3d12,warn+module" \
+        t 120 wine "$REPO/tools/bin/d3d12probe.exe" >"$WORK/probe-winegdk-debug.log" 2>&1
+    grep -v -E "validate_state_table|^\s*$" "$WORK/probe-winegdk-debug.log" | tr -d '\r' | sed 's/^/    /' | tail -n 60
+fi
 
 wineserver -k 2>/dev/null
 echo "== $failures failure(s)"
